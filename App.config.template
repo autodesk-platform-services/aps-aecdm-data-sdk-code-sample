@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<configuration>
+    <appSettings>
+        <!-- REQUIRED: Get these from your Autodesk Developer Account -->
+        <!-- Go to: https://aps.autodesk.com/myapps -->
+        <add key="AuthClientID" value="YOUR_CLIENT_ID_HERE" />
+        <add key="AuthClientSecret" value="YOUR_CLIENT_SECRET_HERE" />
+        <add key="AuthCallBack" value="http://localhost:8080/api/auth/callback" />
+        
+        <!-- OPTIONAL: Application settings -->
+        <add key="ApplicationName" value="AECDMSampleApp" />
+        <add key="ApplicationDataPath" value="" />
+        <add key="LogLevel" value="Info" />
+    </appSettings>
+</configuration> 
