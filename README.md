@@ -1,11 +1,11 @@
-# aps-aecdm-data-sample (**beta**)
+# aps-aecdm-data-sdk-code-sample (**beta**)
 
 [![OAuth2](https://img.shields.io/badge/OAuth2-v2-green.svg)](http://developer.autodesk.com/)
-[![AEC-DM-Geometry](https://img.shields.io/badge/AEC%20DM%20Geometry-beta-green.svg)](http://developer.autodesk.com/)
-![Data SDK Version](https://img.shields.io/badge/Data%20SDK-v0.1.5%20beta-blue.svg)
+[![AEC-DM-Geometry](https://img.shields.io/badge/AEC%20DM%20Geometry-beta-blue.svg)](http://developer.autodesk.com/)
+![Data SDK Version](https://img.shields.io/badge/Data%20SDK-beta-blue.svg)
 
 
-![.NET](https://img.shields.io/badge/NET-4.8%20%7C%208.0-blue.svg)
+![.NET](https://img.shields.io/badge/NET-4.8%20%7C%208.0-green.svg)
 ![Platforms](https://img.shields.io/badge/Web-Windows%20%7C%20MacOS%20%7C%20Linux-lightgray.svg)
 
 
@@ -13,10 +13,11 @@
 [![MIT](https://img.shields.io/badge/License-MIT-blue.svg)](http://opensource.org/licenses/MIT)
 
 # Disclaimer
-AECDM Data SDK is current in Beta, please participate in the Beta program and check all the details at [Autodesk Feedback](https://feedback.autodesk.com/).  
+Please note that AEC DM Geometry API and DataSDK is currently in beta testing, API calls are subject to changes based on the feedback received. We recommend avoiding using this API to build production software during this phase. If you have an urgent requirement, please contact our team before utilizing the API.
+
+You are required to participate in the [AEC Data Model Public Beta Program](https://feedback.autodesk.com/), follow the instructions, download the DataSDK, and provide your feedback there.
 
 # Description
-
 A comprehensive sample application demonstrating how to integrate Autodesk's Data SDK with AECDM (Architecture, Engineering, Construction, and Design Manufacturing) data. This application shows how to query AECDM data, process geometry, and export to IFC format.
 
 ## 🎯 What This Application Does
@@ -48,7 +49,7 @@ This sample demonstrates the complete workflow for working with AECDM data:
    - Fill in application details:
      - **App Name**: Your application name
      - **App Description**: Brief description
-     - **Callback URL**: `http://localhost:8080/api/auth/callback` (for testing)
+     - **Callback URL**: `http://localhost:8080/api/auth/callback/` (for testing)
    - Select APIs: Check "Data Management API" and "Model Derivative API"
    - Save the application
 
@@ -84,7 +85,7 @@ cp App.config.template App.config
         <add key="AuthClientID" value="YOUR_CLIENT_ID_HERE" />
         <add key="AuthClientSecret" value="YOUR_CLIENT_SECRET_HERE" />
         <!-- Required: OAuth callback URL -->
-        <add key="AuthCallBack" value="http://localhost:8080/api/auth/callback" />
+        <add key="AuthCallBack" value="http://localhost:8080/api/auth/callback/" />
         <!-- Optional: Application settings -->
         <add key="ApplicationName" value="AECDMSampleApp" />
         <add key="ApplicationDataPath" value="" />
@@ -150,7 +151,7 @@ data-sdk-aecdm-sample/
 |-----------------------|-----------------------------------------------------------------------------|---------------------------------|
 | `AuthClientID`        | Your Autodesk app's Client ID                                               | `abc123def456...`               |
 | `AuthClientSecret`    | Your Autodesk app's Client Secret *(Not required for PKCE Auth)*            | `xyz789uvw012...`               |
-| `AuthCallBack`        | OAuth callback URL                                                          | `http://localhost:8080/api/auth/callback` |
+| `AuthCallBack`        | OAuth callback URL                                                          | `http://localhost:8080/api/auth/callback/` |
 | `ApplicationName`     | Custom application name                                                     | `MyAECDMApp`                    |
 | `ApplicationDataPath` | Custom data directory                                                       | `C:\MyApp\Data`               |
 | `LogLevel`            | Logging verbosity                                                           | `Info`, `Debug`, `Error`        |
