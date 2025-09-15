@@ -9,6 +9,7 @@
     <AssemblyTitle>AECDM Data SDK Sample Application</AssemblyTitle>
     <Description>Sample application demonstrating Autodesk Data SDK integration with AECDM data</Description>
     <Version>1.0.0</Version>
+    <Platforms>x64</Platforms>
   </PropertyGroup>
 
   <ItemGroup>
