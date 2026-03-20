@@ -2,10 +2,10 @@
 
 [![OAuth2](https://img.shields.io/badge/OAuth2-v2-green.svg)](http://developer.autodesk.com/)
 [![AEC-DM-Geometry](https://img.shields.io/badge/AEC%20DM%20Geometry-beta-blue.svg)](http://developer.autodesk.com/)
-![Data SDK Version](https://img.shields.io/badge/Data%20SDK-beta-blue.svg)
+![Data SDK Version](https://img.shields.io/badge/Data%20SDK-0.2.0--beta-blue.svg)
 
 
-![.NET](https://img.shields.io/badge/NET-4.8%20%7C%208.0-green.svg)
+![.NET](https://img.shields.io/badge/NET-8.0-green.svg)
 ![Platforms](https://img.shields.io/badge/Web-Windows%20%7C%20MacOS%20%7C%20Linux-lightgray.svg)
 
 
@@ -18,24 +18,24 @@ Please note that AEC DM Geometry API and DataSDK is currently in beta testing, A
 You are required to participate in the [AEC Data Model Public Beta Program](https://feedback.autodesk.com/), follow the instructions, download the DataSDK, and provide your feedback there.
 
 # Description
-A comprehensive sample application demonstrating how to integrate Autodesk's Data SDK with AECDM (Architecture, Engineering, Construction, and Design Manufacturing) data. This application shows how to query AECDM data, process geometry, and export to IFC format.
+A comprehensive sample application demonstrating how to integrate Autodesk's Data SDK (`Autodesk.Data 0.2.0-beta`) with AECDM (Architecture, Engineering, Construction, and Design Manufacturing) data. This application shows how to navigate hubs and projects, query AECDM elements, process geometry, and export to IFC format.
 
 ## 🎯 What This Application Does
 
 This sample demonstrates the complete workflow for working with AECDM data:
 
 1. **Authentication** - Secure connection to Autodesk APIs using OAuth 2.0
-2. **Data Querying** - Retrieve elements from AECDM using high-level API methods. You can fetch all elements from an element group, or fetch a single element by its ID.
-3. **SDK Integration** - Add elements to the Data SDK's ElementGroup abstraction automatically
-4. **Export** - Convert all elements to IFC format (geometry processing is handled by the SDK)
-5. **Geometry Display** - Retrieve and display mesh geometry information for each element
-6. **Advanced Option** - You can also fetch geometry data directly for individual elements and use it as needed, but the recommended workflow is to use the ConvertToIfc and mesh methods for simplicity and reliability.
+2. **Navigation** - Interactively browse Hubs → Projects → Element Groups using the Navigation API
+3. **Data Querying** - Retrieve elements from an Element Group using filters or fetch all elements at once
+4. **SDK Integration** - Add elements to the Data SDK's `ElementGroup` abstraction for processing
+5. **Export** - Convert all elements to IFC format (geometry processing is handled by the SDK)
+6. **Geometry Display** - Retrieve and display mesh geometry information for each element, with optional BRep-to-mesh conversion options
 
 ## 📋 Prerequisites
 
 ### Software Requirements
 - **Visual Studio 2022** or **Visual Studio Code** with C# extension
-- **.NET Framework 4.8 or .NET 8.0 SDK**
+- **.NET 8.0 SDK**
 - **Internet connection** for API access
 
 ### Autodesk Developer Account Setup
@@ -49,7 +49,7 @@ This sample demonstrates the complete workflow for working with AECDM data:
    - Fill in application details:
      - **App Name**: Your application name
      - **App Description**: Brief description
-     - **Callback URL**: `http://localhost:8080/api/auth/callback/` (for testing)
+     - **Callback URL**: `http://localhost:8080/api/auth/callback` (for testing)
    - Select APIs: Check "Data Management API" and "Model Derivative API"
    - Save the application
 
@@ -64,7 +64,7 @@ This sample demonstrates the complete workflow for working with AECDM data:
 ```bash
 # Clone the repository
 git clone <your-repository-url>
-cd data-sdk-aecdm-sample
+cd aps-aecdm-data-sdk-code-sample
 
 # Restore NuGet packages
 dotnet restore SampleApp.csproj
@@ -85,7 +85,7 @@ cp App.config.template App.config
         <add key="AuthClientID" value="YOUR_CLIENT_ID_HERE" />
         <add key="AuthClientSecret" value="YOUR_CLIENT_SECRET_HERE" />
         <!-- Required: OAuth callback URL -->
-        <add key="AuthCallBack" value="http://localhost:8080/api/auth/callback/" />
+        <add key="AuthCallBack" value="http://localhost:8080/api/auth/callback" />
         <!-- Optional: Application settings -->
         <add key="ApplicationName" value="AECDMSampleApp" />
         <add key="ApplicationDataPath" value="" />
@@ -94,50 +94,77 @@ cp App.config.template App.config
 </configuration>
 ```
 
-### Step 3: Update Element Group ID or Element IDs
-The sample uses placeholders for element group ID or element IDs for demonstration. You can also fetch a single element by its ID. Replace these with your actual GraphQL `elementGroup` or element IDs in `Program.cs`:
+### Step 3: Build and Run
 
-```csharp
-// Replace this with your actual element group ID
-await ConvertCompleteAECDMElementGroupToIFCAsync(client, "Your_GraphQLElementGroupId");
-
-// Or fetch a single element
-await ConvertSingleAECDMElementToIFCAsync(client, "Your_GraphQLElementId");
-
-// Or fetch multiple elements by Id
-await ConvertMultipleAECDMElementsToIFCAsync(client, new List<string> { "Your_GraphQLElementId1", "Your_GraphQLElementId2" });
-```
-
-### Step 4: Build and Run
+```bash
 # Build the application
 dotnet build
 
 # Run the application
 dotnet run
 ```
+
+### Step 4: Navigate to Your Element Group
+
+When the application starts, it uses the **Navigation API** to let you interactively browse your data:
+
+```
+========================================
+AECDM Navigation: Browse Element Groups
+========================================
+
+Fetching Hubs...
+Found 2 hub(s):
+  1. My Company Hub (ID: a.YnVzaW5lc3M6...)
+  2. Personal Hub (ID: a.cGVyc29uYWw6...)
+Select a hub (1-2) [default: 1]: 1
+→ Using hub: My Company Hub
+
+Fetching Projects...
+Found 3 project(s):
+  1. Office Building (ID: b.project1...)
+  2. Residential Tower (ID: b.project2...)
+  ...
+Select a project (1-3) [default: 1]: 1
+
+Fetching Element Groups (Revit models)...
+Found 1 element group(s):
+  1. Building Model v3 (ID: urn:adsk.dtm:...)
+→ Selected: Building Model v3
+
+Do you want to include Extended Properties? (Yes/No): No
+```
+
+No hardcoded IDs are needed — the app discovers your available data at runtime.
+
 ## 🌍 Element Group Region Selection
 
-When creating an `ElementGroup`, you can specify the region to optimize data access and processing. The available regions are:
-- `ElementGroup.Region.US` (default)
-- `ElementGroup.Region.EMEA`
-- `ElementGroup.Region.AUS`
+When creating an `ElementGroup`, you can specify the region to optimize data access. The available regions are:
+- `Region.US` (default)
+- `Region.EMEA`
+- `Region.AUS`
 
-**Example:**// Create an ElementGroup for the US region (default)
-var elementGroup = ElementGroup.Create(client, ElementGroup.Region.US);
+```csharp
+using Autodesk.Data.Enums;
 
-// Or for EMEA
-var elementGroup = ElementGroup.Create(client, ElementGroup.Region.EMEA);
+// US region (default)
+var elementGroup = new ElementGroup(client, Region.US);
 
-// Or for AUS
-var elementGroup = ElementGroup.Create(client, ElementGroup.Region.AUS);
+// EMEA region
+var elementGroup = new ElementGroup(client, Region.EMEA);
+
+// AUS region
+var elementGroup = new ElementGroup(client, Region.AUS);
+```
+
 Specifying the region is optional. If not provided, US is used by default. Choose the region closest to your data or users for best performance.
 
 ## 📁 Project Structure
 
 ```
-data-sdk-aecdm-sample/
+aps-aecdm-data-sdk-code-sample/
 ├── Program.cs              # Main application entry point with workflow orchestration
-├── App.config              # Configuration file for credentials and settings
+├── App.config              # Configuration file for credentials and settings (gitignored)
 ├── App.config.template     # Template configuration file for easy setup
 ├── SampleApp.csproj        # Project file with dependencies
 ├── README.md               # This documentation
@@ -151,7 +178,7 @@ data-sdk-aecdm-sample/
 |-----------------------|-----------------------------------------------------------------------------|---------------------------------|
 | `AuthClientID`        | Your Autodesk app's Client ID                                               | `abc123def456...`               |
 | `AuthClientSecret`    | Your Autodesk app's Client Secret *(Not required for PKCE Auth)*            | `xyz789uvw012...`               |
-| `AuthCallBack`        | OAuth callback URL                                                          | `http://localhost:8080/api/auth/callback/` |
+| `AuthCallBack`        | OAuth callback URL                                                          | `http://localhost:8080/api/auth/callback` |
 | `ApplicationName`     | Custom application name                                                     | `MyAECDMApp`                    |
 | `ApplicationDataPath` | Custom data directory                                                       | `C:\MyApp\Data`               |
 | `LogLevel`            | Logging verbosity                                                           | `Info`, `Debug`, `Error`        |
@@ -159,74 +186,277 @@ data-sdk-aecdm-sample/
 ## 🔍 Understanding the Code
 
 ### Main Workflow (`Program.cs`)
-The application uses the following high-level API methods for AECDM data access:
+
+The application follows this high-level flow:
 
 ```csharp
-// Initialize SDK and element group
+// 1. Initialize SDK using factory pattern
 var client = SetupAutodeskDataSDK();
-var elementGroup = ElementGroup.Create(client);
 
-// Fetch all elements in a group (recommended)
-await elementGroup.GetElementsAsync(SAMPLE_ELEMENT_GROUP_ID);
+// 2. Navigate to an element group interactively
+var elementGroupInfo = await SelectElementGroupViaNavigationAsync(client);
 
-// Or fetch and add a single element by its ID
-var element = await elementGroup.GetElementAsync(SAMPLE_ELEMENT_ID_1);
+// 3. Optionally include extended properties
+Console.Write("Do you want to include Extended Properties? (Yes/No): ");
+var includeExtendedProperties = Console.ReadLine();
 
-// Export all elements to IFC format
-var ifcFilePath = await elementGroup.ConvertToIfc();
-Console.WriteLine($"IFC file created at: {ifcFilePath}");
+// 4. Run IFC and mesh workflows using the selected ElementGroupInfo
+await ConvertFilteredAECDMElementsToIFCAsync(client, elementGroupInfo, includeExtendedProperties == "Yes");
+await ConvertCompleteAECDMElementGroupToIFCAsync(client, elementGroupInfo, includeExtendedProperties == "Yes");
+await GetMeshGeometriesForFilteredAECDMElementsAsync(client, elementGroupInfo);
+await GetMeshGeometriesForCompleteAECDMElementGroupAsync(client, elementGroupInfo);
+await GetMeshGeometriesExampleWithOptions(client, elementGroupInfo);
+```
+
+### Navigation API
+
+The `SelectElementGroupViaNavigationAsync` method uses the Navigation API to browse the account hierarchy:
+
+```csharp
+// Get all hubs on the account
+var hubs = await aecdmClient.GetHubsAsync();
+
+// Get projects within a hub
+var projects = await aecdmClient.GetProjectsAsync(selectedHub);
+
+// Get element groups (Revit models) within a project
+var elementGroups = await aecdmClient.GetElementGroupsAsync(selectedProject);
+
+// Returns an ElementGroupInfo — used by all downstream methods
+return selectedElementGroup;
 ```
 
 ### IFC and Mesh Workflows
 
 #### IFC Conversion
 
-##### Single Element
-```csharp
-await ConvertSingleAECDMElementToIFCAsync(client, "Your_GraphQLElementId");
-```
-
-##### Multiple Elements
-```csharp
-await ConvertMultipleAECDMElementsToIFCAsync(client, new List<string> { "Your_GraphQLElementId1", "Your_GraphQLElementId2" });
-```
-
 ##### Filtered Elements from an Element Group
 ```csharp
-await ConvertFilteredAECDMElementsToIFCAsync(client, "Your_GraphQLElementGroupId");
+await ConvertFilteredAECDMElementsToIFCAsync(client, elementGroupInfo, includeExtendedProperties: true);
 ```
 
 ##### Complete Element Group
 ```csharp
-await ConvertCompleteAECDMElementGroupToIFCAsync(client, "Your_GraphQLElementGroupId");
+await ConvertCompleteAECDMElementGroupToIFCAsync(client, elementGroupInfo, includeExtendedProperties: false);
 ```
 
 #### Mesh Geometry Retrieval
 
-##### Single Element
-```csharp
-await GetMeshGeometryForSingleAECDMElementAsync(client, "Your_GraphQLElementId");
-```
-
-##### Multiple Elements
-```csharp
-await GetMeshGeometriesForMultipleAECDMElementsAsync(client, new List<string> { "Your_GraphQLElementId1", "Your_GraphQLElementId2" });
-```
-
 ##### Filtered Elements from an Element Group
 ```csharp
-await GetMeshGeometriesForFilteredAECDMElementsAsync(client, "Your_GraphQLElementGroupId");
+await GetMeshGeometriesForFilteredAECDMElementsAsync(client, elementGroupInfo);
 ```
 
 ##### Complete Element Group
 ```csharp
-await GetMeshGeometriesForCompleteAECDMElementGroupAsync(client, "Your_GraphQLElementGroupId");
+await GetMeshGeometriesForCompleteAECDMElementGroupAsync(client, elementGroupInfo);
 ```
 
-##### Advanced example with options
+##### Advanced example with BRep-to-Mesh options
 ```csharp
-await GetMeshGeometriesExampleWithOptions(client, "Your_GraphQLElementGroupId");
+await GetMeshGeometriesExampleWithOptions(client, elementGroupInfo);
 ```
+
+Inside this method, elements are retrieved first, then filtered, and geometry is fetched with custom tessellation options:
+
+```csharp
+var elements = await elementGroup.GetElementsAsync(elementGroupInfo);
+var wallElements = elements.Where(e => e.Category == "Walls");
+var elementGeometryMap = await elementGroup.GetElementGeometriesAsMeshAsync(wallElements, new Autodesk.Data.Geometry.BRepToMeshOptions()
+{
+    SurfaceTolerance = 1.0,
+    NormalTolerance = 15,
+    MaxEdgeLength = 2.0,
+    GridAspectRatio = 0.1,
+});
+```
+
+---
+
+## 🔄 Migrating from `Autodesk.Data 0.1.7-beta` to `0.2.0-beta`
+
+This section documents all breaking changes and new features introduced in `0.2.0-beta`.
+
+---
+
+### 1. Client Creation — Factory Pattern
+
+The `Client` class constructor is replaced by `DataSdkClientFactory`.
+
+**Before (0.1.7-beta):**
+```csharp
+using Autodesk.Data;
+
+var sdkOptions = new SDKOptionsDefaultSetup { ... };
+return new Client(sdkOptions);
+```
+
+**After (0.2.0-beta):**
+```csharp
+using Autodesk.Data;
+using Client = Autodesk.Data.AECDM.Interface.IClient;
+
+var sdkOptions = new SDKOptionsDefaultSetup { ... };
+var clientFactory = new DataSdkClientFactory();
+Client aecdmClient = clientFactory.CreateAecdmClient(sdkOptions);
+return aecdmClient;
+```
+
+This applies to both the standard (`ClientSecret`) and PKCE authentication setups.
+
+---
+
+### 2. ElementGroup Construction — Constructor replaces Static Factory
+
+`ElementGroup.Create(...)` is replaced by the `new ElementGroup(...)` constructor. The `Region` enum has also moved from a nested type on `ElementGroup` to the `Autodesk.Data.Enums` namespace.
+
+**Before (0.1.7-beta):**
+```csharp
+// Region was nested inside ElementGroup
+var elementGroup = ElementGroup.Create(client, ElementGroup.Region.US);
+
+// Default (no region)
+var elementGroup = ElementGroup.Create(client);
+```
+
+**After (0.2.0-beta):**
+```csharp
+using Autodesk.Data.Enums;
+
+// Region is now in Autodesk.Data.Enums
+var elementGroup = new ElementGroup(client, Region.US);
+```
+
+---
+
+### 3. Navigation API — Replaces Hardcoded IDs
+
+In `0.1.7-beta`, all methods accepted raw `string` IDs that had to be copied from the portal and hardcoded. In `0.2.0-beta`, the **Navigation API** discovers your data at runtime.
+
+**Before (0.1.7-beta):**
+```csharp
+// IDs had to be hardcoded as string constants
+await ConvertCompleteAECDMElementGroupToIFCAsync(client, "Your_GraphQLElementGroupId");
+await GetMeshGeometriesForFilteredAECDMElementsAsync(client, "Your_GraphQLElementGroupId");
+```
+
+**After (0.2.0-beta):**
+```csharp
+// Navigate interactively: Hubs → Projects → ElementGroups
+var elementGroupInfo = await SelectElementGroupViaNavigationAsync(client);
+
+// Pass the resolved ElementGroupInfo to all methods
+await ConvertCompleteAECDMElementGroupToIFCAsync(client, elementGroupInfo, includeExtendedProperties);
+await GetMeshGeometriesForFilteredAECDMElementsAsync(client, elementGroupInfo);
+```
+
+The Navigation API methods used internally:
+```csharp
+var hubs     = await aecdmClient.GetHubsAsync();
+var projects = await aecdmClient.GetProjectsAsync(selectedHub);
+var groups   = await aecdmClient.GetElementGroupsAsync(selectedProject);
+```
+
+---
+
+### 4. Method Signatures — `ElementGroupInfo` replaces `string`
+
+All methods that previously accepted a raw `string` element group ID now accept `ElementGroupInfo`.
+
+**Before (0.1.7-beta):**
+```csharp
+private static async Task ConvertFilteredAECDMElementsToIFCAsync(Client client, string GraphQLElementGroupId)
+{
+    var elementGroup = ElementGroup.Create(client);
+    await elementGroup.GetElementsAsync(GraphQLElementGroupId, filter);
+    ...
+}
+```
+
+**After (0.2.0-beta):**
+```csharp
+private static async Task ConvertFilteredAECDMElementsToIFCAsync(Client client, ElementGroupInfo elementGroupInfo, bool includeExtendedProperties)
+{
+    var elementGroup = new ElementGroup(client, Region.US);
+    await elementGroup.GetElementsAsync(elementGroupInfo, filter, includeExtendedProperties);
+    ...
+}
+```
+
+---
+
+### 5. Extended Properties Support — New Parameter
+
+`GetElementsAsync` now accepts an `includeExtendedProperties` flag for IFC conversion workflows.
+
+**Before (0.1.7-beta):**
+```csharp
+await elementGroup.GetElementsAsync(GraphQLElementGroupId);
+await elementGroup.GetElementsAsync(GraphQLElementGroupId, filter);
+```
+
+**After (0.2.0-beta):**
+```csharp
+// With filter and extended properties
+await elementGroup.GetElementsAsync(elementGroupInfo, filter, includeExtendedProperties: true);
+
+// Without filter, with extended properties as named parameter
+await elementGroup.GetElementsAsync(elementGroupInfo, includeExtendedProperties: false);
+```
+
+---
+
+### 6. `GetElementsAsync` Return Value
+
+`GetElementsAsync` now returns the collection of elements directly, instead of requiring access via `elementGroup.Elements`.
+
+**Before (0.1.7-beta):**
+```csharp
+await elementGroup.GetElementsAsync(GraphQLElementGroupId);
+var wallElements = elementGroup.Elements.Where(e => e.Category == "Walls");
+```
+
+**After (0.2.0-beta):**
+```csharp
+var elements = await elementGroup.GetElementsAsync(elementGroupInfo);
+var wallElements = elements.Where(e => e.Category == "Walls");
+```
+
+---
+
+### 7. Removed Methods
+
+The following methods that operated on individual elements by raw string ID have been removed in `0.2.0-beta`:
+
+| Removed Method | Reason |
+|---|---|
+| `ConvertSingleAECDMElementToIFCAsync(client, string elementId)` | Use filtered `GetElementsAsync` with an element group |
+| `ConvertMultipleAECDMElementsToIFCAsync(client, List<string> elementIds)` | Use filtered `GetElementsAsync` with an element group |
+| `GetMeshGeometryForSingleAECDMElementAsync(client, string elementId)` | Use `GetElementGeometriesAsMeshAsync` with an element group |
+| `GetMeshGeometriesForMultipleAECDMElementsAsync(client, List<string> elementIds)` | Use `GetElementGeometriesAsMeshAsync` with an element group |
+
+---
+
+### 8. New `using` Directives Required
+
+**Before (0.1.7-beta):**
+```csharp
+using Autodesk.Data;
+using Autodesk.Data.DataModels;
+using System.Configuration;
+```
+
+**After (0.2.0-beta):**
+```csharp
+using Autodesk.Data;
+using Autodesk.Data.DataModels;
+using Autodesk.Data.Enums;       // For Region enum
+using System.Configuration;
+using System.Data;
+using Client = Autodesk.Data.AECDM.Interface.IClient;  // IClient alias
+```
+
+---
 
 ## 🐛 Troubleshooting
 
@@ -237,30 +467,29 @@ await GetMeshGeometriesExampleWithOptions(client, "Your_GraphQLElementGroupId");
 **Solution**: Ensure all authentication values are filled in `App.config`
 
 **Problem**: `Token request failed with status 401`
-**Solution**: 
+**Solution**:
 - Verify your Client ID and Client Secret are correct
 - Ensure your app has the required API permissions
 
+#### Navigation / No Data Found
+**Problem**: `No hubs found. Make sure AECDM is enabled on your account.`
+**Solution**: Ensure your Autodesk account has AECDM enabled and your credentials have access to at least one hub.
+
+**Problem**: `No element groups found. Make sure Revit 2024+ models were uploaded after AECDM activation.`
+**Solution**: Element Groups (Revit models) only appear if they were uploaded to the project *after* AECDM was activated on the account. Re-upload models if needed.
+
 #### Network/API Errors
 **Problem**: `Failed to connect to authentication service`
-**Solution**: 
+**Solution**:
 - Check your internet connection
 - Verify API endpoints are accessible
 - Check if your firewall is blocking the requests
-
-#### Element Data Issues
-**Problem**: `No element data found for Element1`
-**Solution**: 
-- Verify the element IDs exist in your AECDM dataset
-- Check that you have permission to access these elements
-- Ensure the elements contain the expected data structure
 
 ### Getting Help
 
 1. **Check the Console Output**: The application provides detailed logging
 2. **Verify Configuration**: Double-check all values in `App.config`
 3. **Test Authentication**: Ensure your credentials work in the Autodesk Developer Portal
-4. **Check Element IDs**: Verify your element IDs are valid and accessible
 
 ---
 
@@ -269,9 +498,10 @@ await GetMeshGeometriesExampleWithOptions(client, "Your_GraphQLElementGroupId");
 Once you have this sample running:
 
 1. **Explore the Data**: Examine the AECDM data structure and properties
-2. **Customize Processing**: Modify element creation logic for your specific needs
-3. **Add Features**: Implement additional geometry processing or export formats
-4. **Scale Up**: Process larger datasets or integrate with your existing workflows
+2. **Customize Filters**: Modify the `ElementPropertyFilter` expressions to target your specific element categories
+3. **Tune Mesh Options**: Adjust `BRepToMeshOptions` (surface tolerance, normal tolerance, edge length) to balance quality and performance
+4. **Add Features**: Implement additional geometry processing or export formats
+5. **Scale Up**: Process larger datasets or integrate with your existing workflows
 
 Happy coding! 🚀
 
@@ -282,4 +512,3 @@ This sample is licensed under the terms of the [MIT License](http://opensource.o
 
 ## Written by
 **Wilson Picardo** and **Aditya Singh** from AEC DM team.
-
