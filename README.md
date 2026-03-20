@@ -38,6 +38,9 @@ This sample demonstrates the complete workflow for working with AECDM data:
 - **.NET 8.0 SDK**
 - **Internet connection** for API access
 
+### NuGet Package
+`Autodesk.Data 0.2.0-beta` is a **private beta package** — it is not available on the public nuget.org feed. Download it from the [AEC Data Model Public Beta Program portal](https://feedback.autodesk.com/project/version/item.html?cap=9635c95e635b453393da82849304c1fc&arttypeid={56534ead-d6be-454e-b67c-2013caa4b8e0}&artid={438E8347-46CC-4912-9497-7D288E47B171}) and add it as a local NuGet source before running `dotnet restore`.
+
 ### Autodesk Developer Account Setup
 1. **Create Autodesk Developer Account**
    - Go to [Autodesk Developer Portal](https://aps.autodesk.com/)
@@ -190,45 +193,61 @@ aps-aecdm-data-sdk-code-sample/
 The application follows this high-level flow:
 
 ```csharp
-// 1. Initialize SDK using factory pattern
-var client = SetupAutodeskDataSDK();
+// 1. Create the SDK client
+// Autodesk.Data.AECDM.Client is the main entry point for all SDK operations.
+// It is created via DataSdkClientFactory using credentials from App.config.
+var clientFactory = new DataSdkClientFactory();
+Autodesk.Data.AECDM.Client aecdmClient = clientFactory.CreateAecdmClient(sdkOptions);
 
-// 2. Navigate to an element group interactively
-var elementGroupInfo = await SelectElementGroupViaNavigationAsync(client);
+// 2. Navigate to an element group interactively (Hubs → Projects → Element Groups)
+// Returns an ElementGroupInfo object that identifies the selected model.
+var elementGroupInfo = await SelectElementGroupViaNavigationAsync(aecdmClient);
 
-// 3. Optionally include extended properties
+// 3. Optionally include extended properties in element data
+// false (default): basic identity, category, family/type — fast, smaller payload
+// true: adds full IFC property sets (Pset_WallCommon etc.) and custom Revit shared parameters
+//       — use when you need property-driven analytics, QA rules, or a full property inspector UI
+//       — expect larger payloads and slower responses, especially for large element groups
 Console.Write("Do you want to include Extended Properties? (Yes/No): ");
 var includeExtendedProperties = Console.ReadLine();
 
-// 4. Run IFC and mesh workflows using the selected ElementGroupInfo
-await ConvertFilteredAECDMElementsToIFCAsync(client, elementGroupInfo, includeExtendedProperties == "Yes");
-await ConvertCompleteAECDMElementGroupToIFCAsync(client, elementGroupInfo, includeExtendedProperties == "Yes");
-await GetMeshGeometriesForFilteredAECDMElementsAsync(client, elementGroupInfo);
-await GetMeshGeometriesForCompleteAECDMElementGroupAsync(client, elementGroupInfo);
-await GetMeshGeometriesExampleWithOptions(client, elementGroupInfo);
+// 4. Run IFC conversion and mesh geometry workflows using the selected ElementGroupInfo
+await ConvertFilteredAECDMElementsToIFCAsync(aecdmClient, elementGroupInfo, includeExtendedProperties == "Yes");
+await ConvertCompleteAECDMElementGroupToIFCAsync(aecdmClient, elementGroupInfo, includeExtendedProperties == "Yes");
+await GetMeshGeometriesForFilteredAECDMElementsAsync(aecdmClient, elementGroupInfo);
+await GetMeshGeometriesForCompleteAECDMElementGroupAsync(aecdmClient, elementGroupInfo);
+await GetMeshGeometriesExampleWithOptions(aecdmClient, elementGroupInfo);
 ```
 
 ### Navigation API
 
-The `SelectElementGroupViaNavigationAsync` method uses the Navigation API to browse the account hierarchy:
+The `SelectElementGroupViaNavigationAsync` method uses the Navigation API to browse the account hierarchy and returns an `ElementGroupInfo` that is passed into all downstream workflows:
 
 ```csharp
-// Get all hubs on the account
-var hubs = await aecdmClient.GetHubsAsync();
+// aecdmClient is Autodesk.Data.AECDM.Client
 
-// Get projects within a hub
-var projects = await aecdmClient.GetProjectsAsync(selectedHub);
+// Step 1: Get all hubs accessible to the account
+var hubs = await aecdmClient.GetHubsAsync();                        // returns List<HubInfo>
 
-// Get element groups (Revit models) within a project
-var elementGroups = await aecdmClient.GetElementGroupsAsync(selectedProject);
+// Step 2: Get all projects within the chosen hub
+var projects = await aecdmClient.GetProjectsAsync(selectedHub);     // returns List<ProjectInfo>
 
-// Returns an ElementGroupInfo — used by all downstream methods
-return selectedElementGroup;
+// Step 3: Get all element groups (Revit models) within the chosen project
+var elementGroups = await aecdmClient.GetElementGroupsAsync(selectedProject); // returns List<ElementGroupInfo>
+
+// The selected ElementGroupInfo is returned and used by all IFC/mesh methods
+return selectedElementGroup; // ElementGroupInfo
 ```
 
 ### IFC and Mesh Workflows
 
 #### IFC Conversion
+
+The generated `.ifc` file is saved to:
+```
+%AppData%\{ConnectorName}\{user}\Geometry\{ExchangeID}\Geometries\{ifcFileId}.ifc
+```
+The full path is printed to the console on completion. `ifcFileId` is the string you pass to `ConvertToIfc(...)` — if omitted, a GUID is used.
 
 ##### Filtered Elements from an Element Group
 ```csharp
@@ -257,6 +276,24 @@ await GetMeshGeometriesForCompleteAECDMElementGroupAsync(client, elementGroupInf
 await GetMeshGeometriesExampleWithOptions(client, elementGroupInfo);
 ```
 
+**`ElementPropertyFilter` reference** — `PropertyName` and `Operator` are free-form strings passed directly to the AECDM GraphQL API.
+
+Common property names:
+
+| Property | Example values |
+|---|---|
+| `category` | `"Walls"`, `"Doors"`, `"Windows"`, `"Roofs"` |
+| `Element Context` | `"Instance"`, `"Type"` |
+| `name` | Any element name string |
+| `Area` | Numeric string, e.g. `"100"` |
+| `Revit Element ID` | Revit element ID string |
+
+Supported operators: `==`, `!=`, `>`, `<`, `>=`, `<=`
+
+Composition: `AllOf(...)` = AND, `AnyOf(...)` = OR. These can be nested freely.
+
+---
+
 Inside this method, elements are retrieved first, then filtered, and geometry is fetched with custom tessellation options:
 
 ```csharp
@@ -271,6 +308,17 @@ var elementGeometryMap = await elementGroup.GetElementGeometriesAsMeshAsync(wall
 });
 ```
 
+**`BRepToMeshOptions` reference** — all values use model units (meters/feet) except `NormalTolerance` (degrees). Pass `null` to use SDK defaults.
+
+| Parameter | Unit | What it controls | Tighter = |
+|---|---|---|---|
+| `SurfaceTolerance` | Model units | Max gap between mesh and original surface | More triangles on curves |
+| `NormalTolerance` | Degrees | Max angle between adjacent triangle normals | Smoother curved surfaces |
+| `MaxEdgeLength` | Model units | Max triangle edge length | More uniform density |
+| `GridAspectRatio` | Ratio | Max triangle aspect ratio (prevents slivers) | Better mesh quality |
+
+Quick guidance: for **visualization**, tighten `SurfaceTolerance` (`0.001`–`0.01`) and `NormalTolerance` (`5`–`10`). For **lightweight preview**, loosen them (`0.5`–`1.0`, `30`–`45`). Use `MaxEdgeLength` when you need predictable triangle sizes for analysis pipelines.
+
 ---
 
 ## 🔄 Migrating from `Autodesk.Data 0.1.7-beta` to `0.2.0-beta`
@@ -281,7 +329,7 @@ This section documents all breaking changes and new features introduced in `0.2.
 
 ### 1. Client Creation — Factory Pattern
 
-The `Client` class constructor is replaced by `DataSdkClientFactory`.
+The `Client` constructor is replaced by `DataSdkClientFactory`. The returned type is `Autodesk.Data.AECDM.Client`, which is the main entry point for all SDK operations.
 
 **Before (0.1.7-beta):**
 ```csharp
@@ -294,11 +342,10 @@ return new Client(sdkOptions);
 **After (0.2.0-beta):**
 ```csharp
 using Autodesk.Data;
-using Client = Autodesk.Data.AECDM.Interface.IClient;
 
 var sdkOptions = new SDKOptionsDefaultSetup { ... };
 var clientFactory = new DataSdkClientFactory();
-Client aecdmClient = clientFactory.CreateAecdmClient(sdkOptions);
+Autodesk.Data.AECDM.Client aecdmClient = clientFactory.CreateAecdmClient(sdkOptions);
 return aecdmClient;
 ```
 
@@ -375,7 +422,7 @@ private static async Task ConvertFilteredAECDMElementsToIFCAsync(Client client, 
 
 **After (0.2.0-beta):**
 ```csharp
-private static async Task ConvertFilteredAECDMElementsToIFCAsync(Client client, ElementGroupInfo elementGroupInfo, bool includeExtendedProperties)
+private static async Task ConvertFilteredAECDMElementsToIFCAsync(Autodesk.Data.AECDM.Client client, ElementGroupInfo elementGroupInfo, bool includeExtendedProperties)
 {
     var elementGroup = new ElementGroup(client, Region.US);
     await elementGroup.GetElementsAsync(elementGroupInfo, filter, includeExtendedProperties);
@@ -450,10 +497,10 @@ using System.Configuration;
 ```csharp
 using Autodesk.Data;
 using Autodesk.Data.DataModels;
-using Autodesk.Data.Enums;       // For Region enum
+using Autodesk.Data.Enums;  // For Region enum (Region.US, Region.EMEA, Region.AUS)
 using System.Configuration;
 using System.Data;
-using Client = Autodesk.Data.AECDM.Interface.IClient;  // IClient alias
+// Autodesk.Data.AECDM.Client is used as the fully qualified type — no alias needed
 ```
 
 ---
