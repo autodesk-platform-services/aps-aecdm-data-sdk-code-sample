@@ -53,7 +53,7 @@ This sample demonstrates the complete workflow for working with AECDM data:
      - **App Name**: Your application name
      - **App Description**: Brief description
      - **Callback URL**: `http://localhost:65314/api/auth/callback/` (for testing)
-   - Select APIs: Check "Data Management API" and "Model Derivative API"
+   - Select APIs: Check "AEC Data Model API"
    - Save the application
    - Provide access to your APS App client ID in your Forma Hub by following the steps mentioned in the [Provisioning access in other products](https://get-started.aps.autodesk.com/#provision-access-in-other-products) page.
 
