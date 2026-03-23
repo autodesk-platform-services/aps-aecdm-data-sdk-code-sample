@@ -36,7 +36,9 @@ namespace SampleApp
                 // Alternatively, use PKCE Authentication setup if preferred
                 // var client = SetupAutodeskDataSDKWithPKCEAuth();
 
-                var elementGroupInfo = await SelectElementGroupViaNavigationAsync(client);
+                var region = PromptForRegion();
+
+                var elementGroupInfo = await SelectElementGroupViaNavigationAsync(client, region);
                 if (elementGroupInfo == null)
                 {
                     Console.WriteLine("No element group selected. Exiting.");
@@ -50,20 +52,20 @@ namespace SampleApp
 
                 // IFC Conversion examples
                 // Filtered Elements from an Element Group
-                await ConvertFilteredAECDMElementsToIFCAsync(client, elementGroupInfo, includeExtendedProperties == "Yes");
+                await ConvertFilteredAECDMElementsToIFCAsync(client, elementGroupInfo, includeExtendedProperties == "Yes", region);
 
                 // Complete Element Group
-                await ConvertCompleteAECDMElementGroupToIFCAsync(client, elementGroupInfo, includeExtendedProperties == "Yes");
+                await ConvertCompleteAECDMElementGroupToIFCAsync(client, elementGroupInfo, includeExtendedProperties == "Yes", region);
 
                 // Mesh Geometry examples
                 // Filtered Elements from an Element Group
-                await GetMeshGeometriesForFilteredAECDMElementsAsync(client, elementGroupInfo);
+                await GetMeshGeometriesForFilteredAECDMElementsAsync(client, elementGroupInfo, region);
 
                 // Complete Element Group
-                await GetMeshGeometriesForCompleteAECDMElementGroupAsync(client, elementGroupInfo);
+                await GetMeshGeometriesForCompleteAECDMElementGroupAsync(client, elementGroupInfo, region);
 
                 // Advanced example with options
-                await GetMeshGeometriesExampleWithOptions(client, elementGroupInfo);
+                await GetMeshGeometriesExampleWithOptions(client, elementGroupInfo, region);
 
 
                 Console.WriteLine("\nSample workflows completed successfully.");
@@ -80,15 +82,17 @@ namespace SampleApp
         /// Uses the Navigation API to let the user browse Hubs → Projects → ElementGroups
         /// and interactively select an ElementGroup to use in the workflow.
         /// </summary>
-        private static async Task<ElementGroupInfo> SelectElementGroupViaNavigationAsync(Client aecdmClient)
+        private static async Task<ElementGroupInfo> SelectElementGroupViaNavigationAsync(Client aecdmClient, Region region)
         {
             Console.WriteLine("\n========================================");
             Console.WriteLine("AECDM Navigation: Browse Element Groups");
             Console.WriteLine("========================================\n");
 
+            var regionString = region == Region.US ? null : region.ToString().ToUpperInvariant();
+
             // Step 1: Get all Hubs
             Console.WriteLine("Fetching Hubs...");
-            var hubs = await aecdmClient.GetHubsAsync();
+            var hubs = await aecdmClient.GetHubsAsync(regionString);
             if (hubs.Count == 0)
             {
                 Console.WriteLine("No hubs found. Make sure AECDM is enabled on your account.");
@@ -115,7 +119,7 @@ namespace SampleApp
 
             // Step 2: Get Projects in the selected Hub
             Console.WriteLine("Fetching Projects...");
-            var projects = await aecdmClient.GetProjectsAsync(selectedHub);
+            var projects = await aecdmClient.GetProjectsAsync(selectedHub, regionString);
             if (projects.Count == 0)
             {
                 Console.WriteLine("No projects found in this hub.");
@@ -142,7 +146,7 @@ namespace SampleApp
 
             // Step 3: Get ElementGroups in the selected Project
             Console.WriteLine("Fetching Element Groups (Revit models)...");
-            var elementGroups = await aecdmClient.GetElementGroupsAsync(selectedProject);
+            var elementGroups = await aecdmClient.GetElementGroupsAsync(selectedProject, regionString);
             if (elementGroups.Count == 0)
             {
                 Console.WriteLine("No element groups found. Make sure Revit 2024+ models were uploaded after AECDM activation.");
@@ -175,9 +179,9 @@ namespace SampleApp
         /// IFC Conversion Example: Shows how to provide a region when creating an ElementGroup.
         /// The region can be US (default), EMEA, or AUS.
         /// </summary>
-        private static async Task ConvertFilteredAECDMElementsToIFCAsync(Client client, ElementGroupInfo elementGroupInfo, bool includeExtendedProperties)
+        private static async Task ConvertFilteredAECDMElementsToIFCAsync(Client client, ElementGroupInfo elementGroupInfo, bool includeExtendedProperties, Region region)
         {
-            var elementGroup = new ElementGroup(client, Region.US); // Used to group and process AECDM elements
+            var elementGroup = new ElementGroup(client, region); // Used to group and process AECDM elements
 
             // Build the filter equivalent to:
             // (property.name.category == Doors and 'property.name.Element Context'==Instance) or ... for Walls, Windows, Roofs
@@ -217,9 +221,9 @@ namespace SampleApp
 
         }
 
-        private static async Task ConvertCompleteAECDMElementGroupToIFCAsync(Client client, ElementGroupInfo elementGroupInfo, bool includeExtendedProperties)
+        private static async Task ConvertCompleteAECDMElementGroupToIFCAsync(Client client, ElementGroupInfo elementGroupInfo, bool includeExtendedProperties, Region region)
         {
-            var elementGroup = new ElementGroup(client, Region.US); // Used to group and process AECDM elements
+            var elementGroup = new ElementGroup(client, region); // Used to group and process AECDM elements
 
             Console.WriteLine("Fetching all AECDM elements from a sample element group...");
 
@@ -235,9 +239,9 @@ namespace SampleApp
         #endregion
 
         #region Mesh Geometry Examples
-        private static async Task GetMeshGeometriesForFilteredAECDMElementsAsync(Client client, ElementGroupInfo elementGroupInfo)
+        private static async Task GetMeshGeometriesForFilteredAECDMElementsAsync(Client client, ElementGroupInfo elementGroupInfo, Region region)
         {
-            var elementGroup = new ElementGroup(client, Region.US); // Used to group and process AECDM elements
+            var elementGroup = new ElementGroup(client, region); // Used to group and process AECDM elements
 
             // Build the filter equivalent to:
             // (property.name.category == Doors and 'property.name.Element Context'==Instance) or ... for Walls, Windows, Roofs
@@ -291,9 +295,9 @@ namespace SampleApp
 
         }
 
-        private static async Task GetMeshGeometriesForCompleteAECDMElementGroupAsync(Client client, ElementGroupInfo elementGroupInfo)
+        private static async Task GetMeshGeometriesForCompleteAECDMElementGroupAsync(Client client, ElementGroupInfo elementGroupInfo, Region region)
         {
-            var elementGroup = new ElementGroup(client, Region.US); // Used to group and process AECDM elements
+            var elementGroup = new ElementGroup(client, region); // Used to group and process AECDM elements
 
             Console.WriteLine("Fetching all AECDM elements from a sample element group...");
 
@@ -320,9 +324,9 @@ namespace SampleApp
             }
         }
 
-        private static async Task GetMeshGeometriesExampleWithOptions(Client client, ElementGroupInfo elementGroupInfo)
+        private static async Task GetMeshGeometriesExampleWithOptions(Client client, ElementGroupInfo elementGroupInfo, Region region)
         {
-            var elementGroup = new ElementGroup(client, Region.US); // Used to group and process AECDM elements
+            var elementGroup = new ElementGroup(client, region); // Used to group and process AECDM elements
 
             Console.WriteLine("Fetching all AECDM elements from a sample element group...");
 
@@ -359,6 +363,25 @@ namespace SampleApp
 
         #endregion
 
+
+        /// <summary>
+        /// Prompts the user to select a region (US, EMEA, or AUS) from the console.
+        /// </summary>
+        private static Region PromptForRegion()
+        {
+            Console.WriteLine("\nSelect a region:");
+            Console.WriteLine("  1. US (default)");
+            Console.WriteLine("  2. EMEA");
+            Console.WriteLine("  3. AUS");
+            Console.Write("Enter choice (1-3) [default: 1]: ");
+            var input = Console.ReadLine()?.Trim();
+            return input switch
+            {
+                "2" => Region.EMEA,
+                "3" => Region.AUS,
+                _ => Region.US
+            };
+        }
 
         /// <summary>
         /// Configures and initializes the Autodesk Data SDK using values from App.config.
