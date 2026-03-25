@@ -88,11 +88,9 @@ namespace SampleApp
             Console.WriteLine("AECDM Navigation: Browse Element Groups");
             Console.WriteLine("========================================\n");
 
-            var regionString = region == Region.US ? null : region.ToString().ToUpperInvariant();
-
             // Step 1: Get all Hubs
             Console.WriteLine("Fetching Hubs...");
-            var hubs = await aecdmClient.GetHubsAsync(regionString);
+            var hubs = await aecdmClient.GetHubsAsync(region);
             if (hubs.Count == 0)
             {
                 Console.WriteLine("No hubs found. Make sure AECDM is enabled on your account.");
@@ -119,7 +117,7 @@ namespace SampleApp
 
             // Step 2: Get Projects in the selected Hub
             Console.WriteLine("Fetching Projects...");
-            var projects = await aecdmClient.GetProjectsAsync(selectedHub, regionString);
+            var projects = await aecdmClient.GetProjectsAsync(selectedHub, region);
             if (projects.Count == 0)
             {
                 Console.WriteLine("No projects found in this hub.");
@@ -146,7 +144,7 @@ namespace SampleApp
 
             // Step 3: Get ElementGroups in the selected Project
             Console.WriteLine("Fetching Element Groups (Revit models)...");
-            var elementGroups = await aecdmClient.GetElementGroupsAsync(selectedProject, regionString);
+            var elementGroups = await aecdmClient.GetElementGroupsAsync(selectedProject, region);
             if (elementGroups.Count == 0)
             {
                 Console.WriteLine("No element groups found. Make sure Revit 2024+ models were uploaded after AECDM activation.");

@@ -2,7 +2,7 @@
 
 [![OAuth2](https://img.shields.io/badge/OAuth2-v2-green.svg)](http://developer.autodesk.com/)
 [![AEC-DM-Geometry](https://img.shields.io/badge/AEC%20DM%20Geometry-beta-blue.svg)](http://developer.autodesk.com/)
-![Data SDK Version](https://img.shields.io/badge/Data%20SDK-0.2.0--beta-blue.svg)
+![Data SDK Version](https://img.shields.io/badge/Data%20SDK-0.2.2--beta-blue.svg)
 
 
 ![.NET](https://img.shields.io/badge/NET-8.0-green.svg)
@@ -18,7 +18,7 @@ Please note that AEC DM Geometry API and DataSDK is currently in beta testing, A
 You are required to participate in the [AEC Data Model Public Beta Program](https://feedback.autodesk.com/), follow the instructions, download the DataSDK, and provide your feedback there.
 
 # Description
-A comprehensive sample application demonstrating how to integrate Autodesk's Data SDK (`Autodesk.Data 0.2.1-beta`) with AECDM (Architecture, Engineering, Construction, and Design Manufacturing) data. This application shows how to navigate hubs and projects, query AECDM elements, process geometry, and export to IFC format.
+A comprehensive sample application demonstrating how to integrate Autodesk's Data SDK (`Autodesk.Data 0.2.2-beta`) with AECDM (Architecture, Engineering, Construction, and Design Manufacturing) data. This application shows how to navigate hubs and projects, query AECDM elements, process geometry, and export to IFC format.
 
 ## 🎯 What This Application Does
 
@@ -39,7 +39,7 @@ This sample demonstrates the complete workflow for working with AECDM data:
 - **Internet connection** for API access
 
 ### NuGet Package
-`Autodesk.Data 0.2.1-beta` is a **private beta package** — You can download it from the [AEC Data Model Public Beta Program portal](https://feedback.autodesk.com/project/version/item.html?cap=9635c95e635b453393da82849304c1fc&arttypeid={56534ead-d6be-454e-b67c-2013caa4b8e0}&artid={438E8347-46CC-4912-9497-7D288E47B171}) and add it as a local NuGet source before running `dotnet restore`.
+`Autodesk.Data 0.2.2-beta` is a **private beta package** — You can download it from the [AEC Data Model Public Beta Program portal](https://feedback.autodesk.com/project/version/item.html?cap=9635c95e635b453393da82849304c1fc&arttypeid={56534ead-d6be-454e-b67c-2013caa4b8e0}&artid={438E8347-46CC-4912-9497-7D288E47B171}) and add it as a local NuGet source before running `dotnet restore`.
 
 ### Autodesk Developer Account Setup
 1. **Create Autodesk Developer Account**
@@ -62,6 +62,8 @@ This sample demonstrates the complete workflow for working with AECDM data:
    - **Client Secret**: Copy from your app's details page (keep this secure!)
 
 ## 🚀 Quick Start Guide
+
+> **Region:** When the application starts it will ask you to pick a region — **US**, **EMEA**, or **AUS**. Make sure you know which region your Autodesk Hub is hosted in before running. See [Region Selection](#-region-selection) for details.
 
 ### Step 1: Clone and Setup
 
@@ -167,7 +169,7 @@ Supported values from `Autodesk.Data.Enums.Region`:
 
 | Choice | Region | Notes |
 |--------|--------|-------|
-| 1 | `Region.US` | Default — routes to US; passes `null` to the Navigation API |
+| 1 | `Region.US` | Default — routes to US |
 | 2 | `Region.EMEA` | Europe, Middle East, Africa |
 | 3 | `Region.AUS` | Australia |
 
@@ -241,17 +243,14 @@ The `SelectElementGroupViaNavigationAsync` method uses the Navigation API to bro
 // aecdmClient is Autodesk.Data.AECDM.Client
 // region is the Region enum value selected by the user at startup
 
-// Convert Region enum to the string the Navigation API expects (null = US default)
-var regionString = region == Region.US ? null : region.ToString().ToUpperInvariant();
-
 // Step 1: Get all hubs accessible to the account
-var hubs = await aecdmClient.GetHubsAsync(regionString);                        // returns List<HubInfo>
+var hubs = await aecdmClient.GetHubsAsync(region);                        // returns List<HubInfo>
 
 // Step 2: Get all projects within the chosen hub
-var projects = await aecdmClient.GetProjectsAsync(selectedHub, regionString);   // returns List<ProjectInfo>
+var projects = await aecdmClient.GetProjectsAsync(selectedHub, region);   // returns List<ProjectInfo>
 
 // Step 3: Get all element groups (Revit models) within the chosen project
-var elementGroups = await aecdmClient.GetElementGroupsAsync(selectedProject, regionString); // returns List<ElementGroupInfo>
+var elementGroups = await aecdmClient.GetElementGroupsAsync(selectedProject, region); // returns List<ElementGroupInfo>
 
 // The selected ElementGroupInfo is returned and used by all IFC/mesh methods
 return selectedElementGroup; // ElementGroupInfo
@@ -339,9 +338,9 @@ Quick guidance: for **visualization**, tighten `SurfaceTolerance` (`0.001`–`0.
 
 ---
 
-## 🔄 Migrating from `Autodesk.Data 0.1.7-beta` to `0.2.1-beta`
+## 🔄 Migrating from `Autodesk.Data 0.1.7-beta` to `0.2.2-beta`
 
-This section documents all breaking changes and new features introduced in `0.2.1-beta`.
+This section documents all breaking changes and new features introduced in `0.2.2-beta`.
 
 ---
 
@@ -357,7 +356,7 @@ var sdkOptions = new SDKOptionsDefaultSetup { ... };
 return new Client(sdkOptions);
 ```
 
-**After (0.2.1-beta):**
+**After (0.2.2-beta):**
 ```csharp
 using Autodesk.Data;
 
@@ -384,7 +383,7 @@ var elementGroup = ElementGroup.Create(client, ElementGroup.Region.US);
 var elementGroup = ElementGroup.Create(client);
 ```
 
-**After (0.2.1-beta):**
+**After (0.2.2-beta):**
 ```csharp
 using Autodesk.Data.Enums;
 
@@ -396,7 +395,7 @@ var elementGroup = new ElementGroup(client, Region.US);
 
 ### 3. Navigation API — Replaces Hardcoded IDs
 
-In `0.1.7-beta`, all methods accepted raw `string` IDs that had to be copied from the portal and hardcoded. In `0.2.1-beta`, the **Navigation API** discovers your data at runtime.
+In `0.1.7-beta`, all methods accepted raw `string` IDs that had to be copied from the portal and hardcoded. In `0.2.2-beta`, the **Navigation API** discovers your data at runtime. Navigation API methods accept a type-safe `Region?` enum directly — no string conversion needed.
 
 **Before (0.1.7-beta):**
 ```csharp
@@ -405,9 +404,9 @@ await ConvertCompleteAECDMElementGroupToIFCAsync(client, "Your_GraphQLElementGro
 await GetMeshGeometriesForFilteredAECDMElementsAsync(client, "Your_GraphQLElementGroupId");
 ```
 
-**After (0.2.1-beta):**
+**After (0.2.2-beta):**
 ```csharp
-// Prompt user for region, then navigate interactively: Hubs → Projects → ElementGroups
+// Prompt user for region (returns Region enum value — US, EMEA, or AUS)
 var region = PromptForRegion();
 var elementGroupInfo = await SelectElementGroupViaNavigationAsync(client, region);
 
@@ -416,12 +415,11 @@ await ConvertCompleteAECDMElementGroupToIFCAsync(client, elementGroupInfo, inclu
 await GetMeshGeometriesForFilteredAECDMElementsAsync(client, elementGroupInfo, region);
 ```
 
-The Navigation API methods used internally (region is passed to all three):
+The Navigation API methods accept `Region?` directly — no string conversion needed:
 ```csharp
-var regionString = region == Region.US ? null : region.ToString().ToUpperInvariant();
-var hubs     = await aecdmClient.GetHubsAsync(regionString);
-var projects = await aecdmClient.GetProjectsAsync(selectedHub, regionString);
-var groups   = await aecdmClient.GetElementGroupsAsync(selectedProject, regionString);
+var hubs     = await aecdmClient.GetHubsAsync(region);                        // Region? — type-safe
+var projects = await aecdmClient.GetProjectsAsync(selectedHub, region);        // Region? — type-safe
+var groups   = await aecdmClient.GetElementGroupsAsync(selectedProject, region); // Region? — type-safe
 ```
 
 ---
@@ -440,7 +438,7 @@ private static async Task ConvertFilteredAECDMElementsToIFCAsync(Client client, 
 }
 ```
 
-**After (0.2.1-beta):**
+**After (0.2.2-beta):**
 ```csharp
 private static async Task ConvertFilteredAECDMElementsToIFCAsync(Autodesk.Data.AECDM.Client client, ElementGroupInfo elementGroupInfo, bool includeExtendedProperties, Region region)
 {
@@ -462,7 +460,7 @@ await elementGroup.GetElementsAsync(GraphQLElementGroupId);
 await elementGroup.GetElementsAsync(GraphQLElementGroupId, filter);
 ```
 
-**After (0.2.1-beta):**
+**After (0.2.2-beta):**
 ```csharp
 // With filter and extended properties
 await elementGroup.GetElementsAsync(elementGroupInfo, filter, includeExtendedProperties: true);
@@ -483,7 +481,7 @@ await elementGroup.GetElementsAsync(GraphQLElementGroupId);
 var wallElements = elementGroup.Elements.Where(e => e.Category == "Walls");
 ```
 
-**After (0.2.1-beta):**
+**After (0.2.2-beta):**
 ```csharp
 var elements = await elementGroup.GetElementsAsync(elementGroupInfo);
 var wallElements = elements.Where(e => e.Category == "Walls");
@@ -493,7 +491,7 @@ var wallElements = elements.Where(e => e.Category == "Walls");
 
 ### 7. Removed Methods
 
-The following methods that operated on individual elements by raw string ID have been removed in `0.2.1-beta`:
+The following methods that operated on individual elements by raw string ID have been removed in `0.2.2-beta`:
 
 | Removed Method | Reason |
 |---|---|
@@ -513,7 +511,7 @@ using Autodesk.Data.DataModels;
 using System.Configuration;
 ```
 
-**After (0.2.1-beta):**
+**After (0.2.2-beta):**
 ```csharp
 using Autodesk.Data;
 using Autodesk.Data.DataModels;
