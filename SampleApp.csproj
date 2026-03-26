@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+	  <PlatformTarget>x64</PlatformTarget>
     <TargetFramework>net8.0-windows</TargetFramework>
     <RootNamespace>SampleApp</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -9,11 +10,10 @@
     <AssemblyTitle>AECDM Data SDK Sample Application</AssemblyTitle>
     <Description>Sample application demonstrating Autodesk Data SDK integration with AECDM data</Description>
     <Version>1.0.0</Version>
-    <Platforms>x64</Platforms>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Autodesk.Data" Version="0.1.7-beta" />
+    <PackageReference Include="Autodesk.Data" Version="0.2.2-beta" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.0" />
   </ItemGroup>

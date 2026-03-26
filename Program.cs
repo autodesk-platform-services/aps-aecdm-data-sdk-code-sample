@@ -1,15 +1,18 @@
-﻿namespace SampleApp
+namespace SampleApp
 {
     using Autodesk.Data;
     using Autodesk.Data.DataModels;
+    using Autodesk.Data.Enums;
     using System.Configuration;
+    using System.Data;
+    using Client = Autodesk.Data.AECDM.Interface.IClient;
 
     /// <summary>
     /// AECDM Sample Application - Demonstrates using Autodesk Data SDK for working with AECDM data.
     ///
     /// This application demonstrates the following workflow:
     /// 1. Initialize the Autodesk Data SDK
-    /// 2. Query AECDM Elements (single, multiple, filtered, complete groups)
+    /// 2. Query AECDM Elements (filtered, complete groups)
     /// 3. Export processed data to IFC format (Download and processing of geometry data is handled by the SDK)
     /// 4. Get Element geometries as granular mesh data
     ///
@@ -33,35 +36,36 @@
                 // Alternatively, use PKCE Authentication setup if preferred
                 // var client = SetupAutodeskDataSDKWithPKCEAuth();
 
+                var region = PromptForRegion();
+
+                var elementGroupInfo = await SelectElementGroupViaNavigationAsync(client, region);
+                if (elementGroupInfo == null)
+                {
+                    Console.WriteLine("No element group selected. Exiting.");
+                    return;
+                }
+
+                Console.WriteLine($"\nUsing Element Group: {elementGroupInfo.Name} (ID: {elementGroupInfo.Id})");
+
+                Console.Write("Do you want to include Extended Properties? (Yes/No): ");
+                var includeExtendedProperties = Console.ReadLine();
+
                 // IFC Conversion examples
-                // Single Element
-                await ConvertSingleAECDMElementToIFCAsync(client, "Your_GraphQLElementId");
-
-                // Multiple Elements
-                await ConvertMultipleAECDMElementsToIFCAsync(client, new List<string> { "Your_GraphQLElementId1", "Your_GraphQLElementId2" });
-
                 // Filtered Elements from an Element Group
-                await ConvertFilteredAECDMElementsToIFCAsync(client, "Your_GraphQLElementGroupId");
+                await ConvertFilteredAECDMElementsToIFCAsync(client, elementGroupInfo, includeExtendedProperties == "Yes", region);
 
                 // Complete Element Group
-                await ConvertCompleteAECDMElementGroupToIFCAsync(client, "Your_GraphQLElementGroupId");
-
+                await ConvertCompleteAECDMElementGroupToIFCAsync(client, elementGroupInfo, includeExtendedProperties == "Yes", region);
 
                 // Mesh Geometry examples
-                // Single Element
-                await GetMeshGeometryForSingleAECDMElementAsync(client, "Your_GraphQLElementId");
-
-                // Multiple Elements
-                await GetMeshGeometriesForMultipleAECDMElementsAsync(client, new List<string> { "Your_GraphQLElementId1", "Your_GraphQLElementId2" });
-
                 // Filtered Elements from an Element Group
-                await GetMeshGeometriesForFilteredAECDMElementsAsync(client, "Your_GraphQLElementGroupId");
+                await GetMeshGeometriesForFilteredAECDMElementsAsync(client, elementGroupInfo, region);
 
                 // Complete Element Group
-                await GetMeshGeometriesForCompleteAECDMElementGroupAsync(client, "Your_GraphQLElementGroupId");
+                await GetMeshGeometriesForCompleteAECDMElementGroupAsync(client, elementGroupInfo, region);
 
                 // Advanced example with options
-                await GetMeshGeometriesExampleWithOptions(client, "Your_GraphQLElementGroupId");
+                await GetMeshGeometriesExampleWithOptions(client, elementGroupInfo, region);
 
 
                 Console.WriteLine("\nSample workflows completed successfully.");
@@ -74,46 +78,108 @@
             }
         }
 
+        /// <summary>
+        /// Uses the Navigation API to let the user browse Hubs → Projects → ElementGroups
+        /// and interactively select an ElementGroup to use in the workflow.
+        /// </summary>
+        private static async Task<ElementGroupInfo> SelectElementGroupViaNavigationAsync(Client aecdmClient, Region region)
+        {
+            Console.WriteLine("\n========================================");
+            Console.WriteLine("AECDM Navigation: Browse Element Groups");
+            Console.WriteLine("========================================\n");
+
+            // Step 1: Get all Hubs
+            Console.WriteLine("Fetching Hubs...");
+            var hubs = await aecdmClient.GetHubsAsync(region);
+            if (hubs.Count == 0)
+            {
+                Console.WriteLine("No hubs found. Make sure AECDM is enabled on your account.");
+                return null;
+            }
+
+            Console.WriteLine($"Found {hubs.Count} hub(s):");
+            for (int i = 0; i < hubs.Count; i++)
+            {
+                Console.WriteLine($"  {i + 1}. {hubs[i].Name} (ID: {hubs[i].Id})");
+            }
+
+            var selectedHub = hubs[0];
+            if (hubs.Count > 1)
+            {
+                Console.Write($"Select a hub (1-{hubs.Count}) [default: 1]: ");
+                var hubInput = Console.ReadLine()?.Trim();
+                if (int.TryParse(hubInput, out int hubIndex) && hubIndex >= 1 && hubIndex <= hubs.Count)
+                {
+                    selectedHub = hubs[hubIndex - 1];
+                }
+            }
+            Console.WriteLine($"→ Using hub: {selectedHub.Name}\n");
+
+            // Step 2: Get Projects in the selected Hub
+            Console.WriteLine("Fetching Projects...");
+            var projects = await aecdmClient.GetProjectsAsync(selectedHub, region);
+            if (projects.Count == 0)
+            {
+                Console.WriteLine("No projects found in this hub.");
+                return null;
+            }
+
+            Console.WriteLine($"Found {projects.Count} project(s):");
+            for (int i = 0; i < projects.Count; i++)
+            {
+                Console.WriteLine($"  {i + 1}. {projects[i].Name} (ID: {projects[i].Id})");
+            }
+
+            var selectedProject = projects[0];
+            if (projects.Count > 1)
+            {
+                Console.Write($"Select a project (1-{projects.Count}) [default: 1]: ");
+                var projInput = Console.ReadLine()?.Trim();
+                if (int.TryParse(projInput, out int projIndex) && projIndex >= 1 && projIndex <= projects.Count)
+                {
+                    selectedProject = projects[projIndex - 1];
+                }
+            }
+            Console.WriteLine($"→ Using project: {selectedProject.Name}\n");
+
+            // Step 3: Get ElementGroups in the selected Project
+            Console.WriteLine("Fetching Element Groups (Revit models)...");
+            var elementGroups = await aecdmClient.GetElementGroupsAsync(selectedProject, region);
+            if (elementGroups.Count == 0)
+            {
+                Console.WriteLine("No element groups found. Make sure Revit 2024+ models were uploaded after AECDM activation.");
+                return null;
+            }
+
+            Console.WriteLine($"Found {elementGroups.Count} element group(s):");
+            for (int i = 0; i < elementGroups.Count; i++)
+            {
+                Console.WriteLine($"  {i + 1}. {elementGroups[i].Name} (ID: {elementGroups[i].Id})");
+            }
+
+            var selectedElementGroup = elementGroups[0];
+            if (elementGroups.Count > 1)
+            {
+                Console.Write($"Select an element group (1-{elementGroups.Count}) [default: 1]: ");
+                var egInput = Console.ReadLine()?.Trim();
+                if (int.TryParse(egInput, out int egIndex) && egIndex >= 1 && egIndex <= elementGroups.Count)
+                {
+                    selectedElementGroup = elementGroups[egIndex - 1];
+                }
+            }
+            Console.WriteLine($"→ Selected: {selectedElementGroup.Name} (ID: {selectedElementGroup.Id})");
+
+            return selectedElementGroup;
+        }
+
         #region IFC Conversion Examples
         /// <summary>
         /// IFC Conversion Example: Shows how to provide a region when creating an ElementGroup.
         /// The region can be US (default), EMEA, or AUS.
         /// </summary>
-        private static async Task ConvertSingleAECDMElementToIFCAsync(Client client, string GraphQLElementId)
+        private static async Task ConvertFilteredAECDMElementsToIFCAsync(Client client, ElementGroupInfo elementGroupInfo, bool includeExtendedProperties, Region region)
         {
-            // You can specify the region for the element group: US (default), EMEA, or AUS
-            // Example: ElementGroup.Create(client, ElementGroup.Region.EMEA) or ElementGroup.Region.AUS
-            var elementGroup = ElementGroup.Create(client, ElementGroup.Region.US); // Used to group and process AECDM elements
-
-            Console.WriteLine($"Fetching single AECDM element: {GraphQLElementId}");
-
-            // Populate ElementGroup with single element by Id
-            await elementGroup.GetElementAsync(GraphQLElementId);
-
-            // Export ElementGroup to IFC format
-            Console.WriteLine("Converting elements to IFC format...");
-            var ifcFilePath = await elementGroup.ConvertToIfc("IFCFileName");
-            Console.WriteLine($"IFC file created at: {ifcFilePath}");
-        }
-
-        private static async Task ConvertMultipleAECDMElementsToIFCAsync(Client client, List<string> GraphQLElementIds)
-        {
-            var elementGroup = ElementGroup.Create(client); // Used to group and process AECDM elements
-
-            Console.WriteLine($"Fetching multiple AECDM elements by Ids");
-
-            // Populate ElementGroup with multiple elements by collection of Ids
-            await elementGroup.GetElementsAsync(GraphQLElementIds);
-
-            // Export ElementGroup to IFC format
-            Console.WriteLine("Converting elements to IFC format...");
-            var ifcFilePath = await elementGroup.ConvertToIfc("IFCFileName");
-            Console.WriteLine($"IFC file created at: {ifcFilePath}");
-        }
-
-        private static async Task ConvertFilteredAECDMElementsToIFCAsync(Client client, string GraphQLElementGroupId)
-        {
-            var elementGroup = ElementGroup.Create(client); // Used to group and process AECDM elements
+            var elementGroup = new ElementGroup(client, region); // Used to group and process AECDM elements
 
             // Build the filter equivalent to:
             // (property.name.category == Doors and 'property.name.Element Context'==Instance) or ... for Walls, Windows, Roofs
@@ -144,7 +210,7 @@
             Console.WriteLine("Fetching filtered AECDM elements from a sample element group...");
 
             // Populate ElementGroup with filtered elements
-            await elementGroup.GetElementsAsync(GraphQLElementGroupId, filter);
+            await elementGroup.GetElementsAsync(elementGroupInfo, filter, includeExtendedProperties);
 
             // Export ElementGroup to IFC format
             Console.WriteLine("Converting elements to IFC format...");
@@ -153,14 +219,14 @@
 
         }
 
-        private static async Task ConvertCompleteAECDMElementGroupToIFCAsync(Client client, string GraphQLElementGroupId)
+        private static async Task ConvertCompleteAECDMElementGroupToIFCAsync(Client client, ElementGroupInfo elementGroupInfo, bool includeExtendedProperties, Region region)
         {
-            var elementGroup = ElementGroup.Create(client); // Used to group and process AECDM elements
+            var elementGroup = new ElementGroup(client, region); // Used to group and process AECDM elements
 
             Console.WriteLine("Fetching all AECDM elements from a sample element group...");
 
             // Populate ElementGroup with all elements
-            await elementGroup.GetElementsAsync(GraphQLElementGroupId);
+            await elementGroup.GetElementsAsync(elementGroupInfo, includeExtendedProperties: includeExtendedProperties);
 
             // Export ElementGroup to IFC format
             Console.WriteLine("Converting elements to IFC format...");
@@ -171,67 +237,9 @@
         #endregion
 
         #region Mesh Geometry Examples
-        private static async Task GetMeshGeometryForSingleAECDMElementAsync(Client client, string GraphQLElementId)
+        private static async Task GetMeshGeometriesForFilteredAECDMElementsAsync(Client client, ElementGroupInfo elementGroupInfo, Region region)
         {
-            var elementGroup = ElementGroup.Create(client); // Used to group and process AECDM elements
-
-            Console.WriteLine($"Fetching single AECDM element: {GraphQLElementId}");
-
-            // Populate ElementGroup with single element by Id
-            await elementGroup.GetElementAsync(GraphQLElementId);
-
-            // Retrieve and process mesh geometry information for each element in the group
-            var elementGeometryMap = await elementGroup.GetElementGeometriesAsMeshAsync().ConfigureAwait(false);
-            foreach (var kv in elementGeometryMap)
-            {
-                var element = kv.Key;
-                var meshList = kv.Value;
-                if (meshList.Count() > 0)
-                {
-                    Console.WriteLine($"Element ID: {element.Id} has {meshList.Count()} mesh geometries.");
-                    foreach (var meshObj in meshList)
-                    {
-                        if (meshObj is MeshGeometry meshGeometry)
-                        {
-                            Console.WriteLine($"  Mesh Vertices Count: {meshGeometry.Mesh?.Vertices.Count}");
-                        }
-                    }
-                }
-            }
-        }
-
-        private static async Task GetMeshGeometriesForMultipleAECDMElementsAsync(Client client, List<string> GraphQLElementIds)
-        {
-            var elementGroup = ElementGroup.Create(client); // Used to group and process AECDM elements
-
-            Console.WriteLine($"Fetching multiple AECDM elements by Ids");
-
-            // Populate ElementGroup with multiple elements by collection of Ids
-            await elementGroup.GetElementsAsync(GraphQLElementIds);
-
-            // Retrieve and process mesh geometry information for each element in the group
-            var elementGeometryMap = await elementGroup.GetElementGeometriesAsMeshAsync().ConfigureAwait(false);
-            foreach (var kv in elementGeometryMap)
-            {
-                var element = kv.Key;
-                var meshList = kv.Value;
-                if (meshList.Count() > 0)
-                {
-                    Console.WriteLine($"Element ID: {element.Id} has {meshList.Count()} mesh geometries.");
-                    foreach (var meshObj in meshList)
-                    {
-                        if (meshObj is MeshGeometry meshGeometry)
-                        {
-                            Console.WriteLine($"  Mesh Vertices Count: {meshGeometry.Mesh?.Vertices.Count}");
-                        }
-                    }
-                }
-            }
-        }
-
-        private static async Task GetMeshGeometriesForFilteredAECDMElementsAsync(Client client, string GraphQLElementGroupId)
-        {
-            var elementGroup = ElementGroup.Create(client); // Used to group and process AECDM elements
+            var elementGroup = new ElementGroup(client, region); // Used to group and process AECDM elements
 
             // Build the filter equivalent to:
             // (property.name.category == Doors and 'property.name.Element Context'==Instance) or ... for Walls, Windows, Roofs
@@ -262,7 +270,7 @@
             Console.WriteLine("Fetching filtered AECDM elements from a sample element group...");
 
             // Populate ElementGroup with filtered elements
-            await elementGroup.GetElementsAsync(GraphQLElementGroupId, filter);
+            await elementGroup.GetElementsAsync(elementGroupInfo, filter);
 
             // Retrieve and process mesh geometry information for each element in the group
             var elementGeometryMap = await elementGroup.GetElementGeometriesAsMeshAsync().ConfigureAwait(false);
@@ -285,14 +293,14 @@
 
         }
 
-        private static async Task GetMeshGeometriesForCompleteAECDMElementGroupAsync(Client client, string GraphQLElementGroupId)
+        private static async Task GetMeshGeometriesForCompleteAECDMElementGroupAsync(Client client, ElementGroupInfo elementGroupInfo, Region region)
         {
-            var elementGroup = ElementGroup.Create(client); // Used to group and process AECDM elements
+            var elementGroup = new ElementGroup(client, region); // Used to group and process AECDM elements
 
             Console.WriteLine("Fetching all AECDM elements from a sample element group...");
 
             // Populate ElementGroup with all elements
-            await elementGroup.GetElementsAsync(GraphQLElementGroupId);
+            await elementGroup.GetElementsAsync(elementGroupInfo);
 
             // Retrieve and process mesh geometry information for each element in the group
             var elementGeometryMap = await elementGroup.GetElementGeometriesAsMeshAsync().ConfigureAwait(false);
@@ -314,25 +322,25 @@
             }
         }
 
-        private static async Task GetMeshGeometriesExampleWithOptions(Client client, string GraphQLElementGroupId)
+        private static async Task GetMeshGeometriesExampleWithOptions(Client client, ElementGroupInfo elementGroupInfo, Region region)
         {
-            var elementGroup = ElementGroup.Create(client); // Used to group and process AECDM elements
+            var elementGroup = new ElementGroup(client, region); // Used to group and process AECDM elements
 
             Console.WriteLine("Fetching all AECDM elements from a sample element group...");
 
-            // Populate ElementGroup with all elements
-            await elementGroup.GetElementsAsync(GraphQLElementGroupId);
+            // Populate ElementGroup with all elements and capture the returned elements
+            var elements = await elementGroup.GetElementsAsync(elementGroupInfo);
 
             // Retrieve and process mesh geometry information for specific elements in the group
             // Specify Mesh Conversion options for Brep to Mesh conversion
-            var wallElements = elementGroup.Elements.Where(e => e.Category == "Walls");
-            var elementGeometryMap = await elementGroup.GetElementGeometriesAsMeshAsync(wallElements, new Autodesk.Data.Geometry.BRepToMeshOptions() 
-                                                                                        {
-                                                                                            SurfaceTolerance = 1.0,
-                                                                                            NormalTolerance = 15,
-                                                                                            MaxEdgeLength = 2.0,
-                                                                                            GridAspectRatio = 0.1,
-                                                                                        }).ConfigureAwait(false);
+            var wallElements = elements.Where(e => e.Category == "Walls");
+            var elementGeometryMap = await elementGroup.GetElementGeometriesAsMeshAsync(wallElements, new Autodesk.Data.Geometry.BRepToMeshOptions()
+            {
+                SurfaceTolerance = 1.0,
+                NormalTolerance = 15,
+                MaxEdgeLength = 2.0,
+                GridAspectRatio = 0.1,
+            }).ConfigureAwait(false);
             foreach (var kv in elementGeometryMap)
             {
                 var element = kv.Key;
@@ -350,8 +358,28 @@
                 }
             }
         }
+
         #endregion
 
+
+        /// <summary>
+        /// Prompts the user to select a region (US, EMEA, or AUS) from the console.
+        /// </summary>
+        private static Region PromptForRegion()
+        {
+            Console.WriteLine("\nSelect a region:");
+            Console.WriteLine("  1. US (default)");
+            Console.WriteLine("  2. EMEA");
+            Console.WriteLine("  3. AUS");
+            Console.Write("Enter choice (1-3) [default: 1]: ");
+            var input = Console.ReadLine()?.Trim();
+            return input switch
+            {
+                "2" => Region.EMEA,
+                "3" => Region.AUS,
+                _ => Region.US
+            };
+        }
 
         /// <summary>
         /// Configures and initializes the Autodesk Data SDK using values from App.config.
@@ -388,8 +416,9 @@
                 HostApplicationVersion = "1.0.0",
                 ConnectorVersion = "1.0.0",
             };
-
-            return new Client(sdkOptions);
+            var clientFactory = new DataSdkClientFactory();
+            Client aecdmClient = clientFactory.CreateAecdmClient(sdkOptions);
+            return aecdmClient;
         }
 
         /// <summary>
@@ -426,7 +455,9 @@
                 ConnectorVersion = "1.0.0",
             };
 
-            return new Client(sdkOptions);
+            var clientFactory = new DataSdkClientFactory();
+            Client aecdmClient = clientFactory.CreateAecdmClient(sdkOptions);
+            return aecdmClient;
         }
 
         /// <summary>
